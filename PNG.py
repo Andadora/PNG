@@ -1,7 +1,6 @@
 import binascii
 import image
 
-papuga = image.image('indexed.png')
-print('IDAT:')
-print(papuga.idat)
-print(papuga)
+obraz = image.image('indexed.png')
+print(obraz)
+print(obraz.get_ancillary_data())
