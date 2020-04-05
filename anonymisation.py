@@ -2,7 +2,7 @@ import image
 
 
 class Anonymisation:
-    def read_needs_stuf(self, filepath):
+    def read_needs_stuff(self, filepath):
         file = open(filepath, "rb")
         has_file_all_needed_chuncks = 0
         is_any_IDAT = False
@@ -66,14 +66,9 @@ class Anonymisation:
         }
         return switcher.get(arg, False)
 
-
-def test():
-    anon = Anonymisation()
-    x = anon.read_needs_stuf('indexed.png')
-    out_file = open("nowy.png", "wb")  # open for [w]riting as [b]inary
-    out_file.write(x)
-    out_file.close()
-
-
-if __name__ == '__main__':
-    test()
+    def save(self,filepath, filename):
+        x = self.read_needs_stuff(filepath)
+        out_file = open(str(filename) + '.png', "wb")  # open for [w]riting as [b]inary
+        out_file.write(x)
+        out_file.close()
+        print("zapisano plik: " + str(filename) + '.png')
