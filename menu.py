@@ -25,7 +25,8 @@ def menu():
             obraz = image.image('indexed.png')
             print(obraz)
             print(obraz.get_ancillary_data())
-            print(obraz.idat)
+            print('idat: ' + str(obraz.idat))
+            print('palette: ' + str(obraz.colour_palette))
 
         elif choice == "B" or choice == "b":
             anonname = input("""
@@ -40,7 +41,7 @@ def menu():
         elif choice == "Q" or choice == "q":
             sys.exit()
         else:
-            print("You must only select either A,B,C, or D.")
+            print("You must only select either A,B,C")
             print("Please try again")
             menu()
 

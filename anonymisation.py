@@ -51,8 +51,8 @@ class Anonymisation:
             if hex_name == image.chunks_dict['IEND']:
                 break
 
-        if has_file_all_needed_chuncks < 3:
-            print('not enough chunks')
+        if has_file_all_needed_chuncks < 2:
+            print('not enough chunks: ' +str(has_file_all_needed_chuncks))
             file.close()
             exit(-3)
         file.close()

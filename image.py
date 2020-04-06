@@ -20,27 +20,30 @@ chunks_dict = {
     'sPLT': b'73504c54',
     'tIME': b'74494d45',
     'eXIf': b'65584966'
-    }
+}
 colour_type_dict = {
     0: "Greyscale",
     2: "Truecolour",
     3: "Indexed-colour",
     4: "Greyscale with alpha",
     6: "Truecolour with alpha"
-    }
+}
 compression_dict = {
     0: "deflate/inflate"
-    }
+}
 filtering_dict = {
     0: "adaptive filtering with five basic filter types"
-    }
+}
 interlace_dict = {
     0: "no interlace",
     1: "Adam7 interlace"
-    }
+}
+
 
 def ToHex_str(bin):
     return binascii.hexlify(bin)
+
+
 def ToDec_int(bin):
     return int(binascii.hexlify(bin).decode('ascii'), 16)
 
@@ -64,8 +67,9 @@ class image(object):
             exit()
 
         length = ToDec_int(file.read(4))
+        print(length)
         hex = ToHex_str(file.read(4))
-        while(hex != chunks_dict['IEND']):
+        while hex != chunks_dict['IEND']:
             if hex == chunks_dict['IHDR']:
                 self.IHDR(file)
             elif hex == chunks_dict['PLTE']:
@@ -83,9 +87,9 @@ class image(object):
                 file.read(4)
             length = ToDec_int(file.read(4))
             hex = ToHex_str(file.read(4))
-        #print('IEND')
+        # print('IEND')
         file.close()
-    
+
     def __repr__(self):
         return f"""
         width: {self.width}
@@ -96,6 +100,7 @@ class image(object):
         filtering method: {filtering_dict[self.filtering]}
         interlace method: {interlace_dict[self.interlace]}
         """
+
     def __str__(self):
         return f"""
         width: {self.width}
@@ -106,6 +111,7 @@ class image(object):
         filtering method: {filtering_dict[self.filtering]}
         interlace method: {interlace_dict[self.interlace]}
         """
+
     def get_ancillary_data(self):
         return f"""
         cHRM:
@@ -129,28 +135,28 @@ class image(object):
         self.compression = ToDec_int(file.read(1))
         self.filtering = ToDec_int(file.read(1))
         self.interlace = ToDec_int(file.read(1))
+        check_sum = file.read(4)
+
+    def PLTE(self, file, length):  # nie ma w testowym
+        # print('PLTE:')
+        for _ in range(int(length / 3)):
+            self.colour_palette.append((
+                ToDec_int(file.read(1)),
+                ToDec_int(file.read(1)),
+                ToDec_int(file.read(1))))
+        # print(self.colour_palette)
         file.read(4)
 
-    def PLTE(self, file, length): #nie ma w testowym
-            #print('PLTE:')
-            for _ in range(int(length/3)):
-                self.colour_palette.append((
-                    ToDec_int(file.read(1)),
-                    ToDec_int(file.read(1)),
-                    ToDec_int(file.read(1))))
-            #print(self.colour_palette)
-            file.read(4)
-
     def IDAT(self, file, length):
-        #print('IDAT:')
+        # print('IDAT:')
         self.idat += ToHex_str(file.read(length))
         file.read(4)
 
     def cHRM(self, file):
-        self.white_point = (ToDec_int(file.read(4))/100000, ToDec_int(file.read(4))/100000)
-        self.red_point = (ToDec_int(file.read(4))/100000, ToDec_int(file.read(4))/100000)
-        self.green_point = (ToDec_int(file.read(4))/100000, ToDec_int(file.read(4))/100000)
-        self.blue_point = (ToDec_int(file.read(4))/100000, ToDec_int(file.read(4))/100000)
+        self.white_point = (ToDec_int(file.read(4)) / 100000, ToDec_int(file.read(4)) / 100000)
+        self.red_point = (ToDec_int(file.read(4)) / 100000, ToDec_int(file.read(4)) / 100000)
+        self.green_point = (ToDec_int(file.read(4)) / 100000, ToDec_int(file.read(4)) / 100000)
+        self.blue_point = (ToDec_int(file.read(4)) / 100000, ToDec_int(file.read(4)) / 100000)
         file.read(4)
 
     def get_cHRM(self):
@@ -165,9 +171,10 @@ class image(object):
         if self.colour_type == 0 or self.colour_type == 4:
             self.default_background_colour = ToDec_int(file.read(2))
         elif self.colour_type == 2 or self.colour_type == 6:
-            self.default_background_colour = (ToDec_int(file.read(2)), ToDec_int(file.read(2)), ToDec_int(file.read(2))) #RGB
+            self.default_background_colour = (
+                ToDec_int(file.read(2)), ToDec_int(file.read(2)), ToDec_int(file.read(2)))  # RGB
         elif self.colour_type == 3:
-            self.default_background_colour = ToDec_int(file.read(1)) #index koloru
+            self.default_background_colour = ToDec_int(file.read(1))  # index koloru
         file.read(4)
 
     def get_bKGD(self):
@@ -187,5 +194,3 @@ class image(object):
         second = str(ToDec_int(file.read(1)))
         self.time_modification = day + '.' + month + '.' + year + ' ' + hour + ':' + minute + ':' + second
         file.read(4)
-        
-
