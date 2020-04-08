@@ -67,7 +67,6 @@ class image(object):
             exit()
 
         length = ToDec_int(file.read(4))
-        print(length)
         hex = ToHex_str(file.read(4))
         while hex != chunks_dict['IEND']:
             if hex == chunks_dict['IHDR']:
@@ -87,7 +86,6 @@ class image(object):
                 file.read(4)
             length = ToDec_int(file.read(4))
             hex = ToHex_str(file.read(4))
-        # print('IEND')
         file.close()
 
     def __repr__(self):
@@ -137,18 +135,15 @@ class image(object):
         self.interlace = ToDec_int(file.read(1))
         check_sum = file.read(4)
 
-    def PLTE(self, file, length):  # nie ma w testowym
-        # print('PLTE:')
+    def PLTE(self, file, length):
         for _ in range(int(length / 3)):
             self.colour_palette.append((
                 ToDec_int(file.read(1)),
                 ToDec_int(file.read(1)),
                 ToDec_int(file.read(1))))
-        # print(self.colour_palette)
         file.read(4)
 
     def IDAT(self, file, length):
-        # print('IDAT:')
         self.idat += ToHex_str(file.read(length))
         file.read(4)
 
