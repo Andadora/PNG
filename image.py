@@ -136,6 +136,7 @@ class image(object):
         self.filtering = ToDec_int(file.read(1))
         self.interlace = ToDec_int(file.read(1))
         check_sum = file.read(4)
+
     def PLTE(self, file, length):
         for _ in range(int(length / 3)):
             self.colour_palette.append((
@@ -145,7 +146,7 @@ class image(object):
         file.read(4)
 
     def IDAT(self, file, length):
-        self.idat += file.read(length)
+        self.idat += ToHex_str(file.read(length))
         file.read(4)
 
     def cHRM(self, file):
@@ -194,32 +195,26 @@ class image(object):
     def saveImageWithIDAT(self, filename, newIDAT):
         
         file = open(self.path, "rb")
-        temp = file.read()
-        file.close()
 
+        temp = file.read()
         split = temp.split(b'IDAT')
         newsplit = []
+        #print(ToDec_int(split[1][:-8]))
+        #print(split[1][-8:])
         
-        newsplit.append(split[0][:-4])
+        newsplit.append(split[0][0:-4])
         lenght = ToDec_int(split[0][-4:])
         for i in range(1, len(split)-1):
-            newsplit.append(split[i][lenght + 4:-4])
+            newsplit.append(split[i][lenght:-4])
             lenght = ToDec_int(split[i][-4:])
-        newsplit.append(split[-1][lenght + 4:])
-        newsplit.insert(1, int(len(self.idat)).to_bytes(4, byteorder='big'))
+        newsplit.append(split[-1][lenght:])
+        newsplit.insert(1, (int(len(newIDAT))).to_bytes(4, byteorder='big'))
         newsplit.insert(2, b'\x49\x44\x41\x54')
-        try:
-            newIDAT = binascii.unhexlify(newIDAT)
-        except:
-            print("dana była w dobrym formacie")
-        newsplit.insert(3, newIDAT[:int(len(self.idat))])
-        newsplit.insert(4, binascii.crc32(newsplit[2] + newsplit[3]).to_bytes(4, byteorder='big'))
-
-        for bstring in newsplit:
-            print(bstring)
-            print('\n\n\n')
+        newsplit.insert(3, newIDAT)
+        newsplit.insert(4, (int(len(newIDAT))).to_bytes(4, byteorder='big'))
 
         x = b''.join(newsplit)
+        print(x)
 
         out_file = open(str(filename) + '.png', "wb")
         out_file.write(x)
@@ -229,11 +224,11 @@ class image(object):
 
 
 if __name__ == '__main__':
-    obraz =  image('zebra2.png')
+    obraz =  image('kostki.png')
     key = get_random_bytes(16)
     newIDAT = cipher.encodeECB(key, obraz.idat)
-    obraz.saveImageWithIDAT('testzebra2', newIDAT)
+    obraz.saveImageWithIDAT('test', bytes(newIDAT))
 
-    #zakodowany = image('test.png')
-    #oldIDAT = cipher.decodeECB(key, zakodowany.idat)
-    #zakodowany.saveImageWithIDAT('odkodowany', oldIDAT)
+    zakodowany = image('test.png')
+    oldIDAT = cipher.decodeECB(key, zakodowany.idat)
+    zakodowany.saveImageWithIDAT('odkodowany', bytes(oldIDAT))
