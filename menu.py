@@ -4,6 +4,7 @@ from tkinter import *
 import image
 import anonymisation
 import fourier
+import cipher
 
 
 def menu():
@@ -17,12 +18,13 @@ def menu():
                           A: Wczytaj plik
                           B: Anonimizuj
                           C: FFT
+                          D: Encrypt ECB
                           Q: Quit/Log Out
     
                           Please enter your choice: """)
 
         if choice == "A" or choice == "a":
-            obraz = image.image('indexed.png')
+            obraz = image.image(filepath)
             print(obraz)
             print(obraz.get_ancillary_data())
             print('idat: ' + str(obraz.idat))
@@ -38,6 +40,14 @@ def menu():
             f = fourier.Fourier()
             img, shift, spec = f.show_img_fft(filepath)
             f.show_img_inverse_fft(img, shift, spec)
+        #elif choice == "D" or choice == "d":
+        #    encrypted_name = input("""
+        #                Podaj nazwe pliku po zakodowaniu bez rozszerzenia
+        #    """)
+        #    key = get_random_bytes(16)
+        #    print(f'klucz: {key}')
+        #    obraz =  image.image(filepath)
+        #    encryptedIDAT = cipher.encodeECB(key, obraz.IDAT)
         elif choice == "Q" or choice == "q":
             sys.exit()
         else:

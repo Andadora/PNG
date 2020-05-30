@@ -4,7 +4,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>e4db0f5a-5b8c-4a04-a7ff-e883bb862f23</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>PNG.py</StartupFile>
+    <StartupFile>cipher.py</StartupFile>
     <SearchPath>
     </SearchPath>
     <WorkingDirectory>.</WorkingDirectory>
@@ -21,10 +21,14 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="anonymisation.py" />
+    <Compile Include="cipher.py" />
+    <Compile Include="DFT.py" />
+    <Compile Include="fourier.py" />
     <Compile Include="image.py">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="PNG.py" />
+    <Compile Include="menu.py" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
