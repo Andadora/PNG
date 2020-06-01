@@ -1,6 +1,10 @@
 import binascii
 import cipher
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 from Crypto.Random import get_random_bytes
+import zlib
+import numpy as np
 
 chunks_dict = {
     'IHDR': b'49484452',
@@ -39,6 +43,13 @@ filtering_dict = {
 interlace_dict = {
     0: "no interlace",
     1: "Adam7 interlace"
+}
+bytes_per_pix_dict = {
+    0: 1,
+    2: 3,
+    3: 1,
+    4: 2,
+    6: 4
 }
 
 
@@ -135,6 +146,8 @@ class image(object):
         self.compression = ToDec_int(file.read(1))
         self.filtering = ToDec_int(file.read(1))
         self.interlace = ToDec_int(file.read(1))
+        self.bytes_per_pix = bytes_per_pix_dict[self.colour_type]
+        self.scanline_length = self.width*self.bytes_per_pix+1
         check_sum = file.read(4)
 
     def PLTE(self, file, length):
@@ -145,8 +158,8 @@ class image(object):
                 ToDec_int(file.read(1))))
         file.read(4)
 
-   def IDAT(self, file, length):
-        self.idat += file.read(length)
+    def IDAT(self, file, length):
+        self.idat += ToHex_str(file.read(length))
         file.read(4)
 
     def cHRM(self, file):
@@ -192,6 +205,32 @@ class image(object):
         self.time_modification = day + '.' + month + '.' + year + ' ' + hour + ':' + minute + ':' + second
         file.read(4)
 
+    def getDecompressedIDAT(self):
+        return zlib.decompress(binascii.unhexlify(self.idat))
+
+    def getScanlines(self):
+        decompressed = self.getDecompressedIDAT()
+        scanlines = [decompressed[i*self.scanline_length:(i+1)*self.scanline_length] for i in range(0, self.height)]
+        return scanlines
+
+    def encodeIDAT_with_decompression(self):
+        scanlines = obraz.getScanlines()
+        toencode = b''
+        toleave = b''
+        for scanline in scanlines:
+            toencode += scanline[1:]
+            toleave += scanline[0:1]
+
+        encoded = cipher.encodeECB(key, toencode)
+        encoded_lst = [encoded[i:i+1] for i in range(0, len(encoded))]
+        for i in range(len(toleave)):
+            encoded_lst.insert(i*obraz.scanline_length, toleave[i:i+1])
+        newIDAT = b''.join(encoded_lst[:len(toencode)+len(toleave)])
+        rest = b''.join(encoded_lst[len(toencode)+len(toleave):])
+        compressedNewIDAT = zlib.compress(newIDAT)
+        compressedRest = zlib.compress(rest)
+        return (compressedNewIDAT, compressedRest)
+
     def saveImageWithIDAT(self, filename, newIDAT):
         
         file = open(self.path, "rb")
@@ -207,12 +246,12 @@ class image(object):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
-        newsplit.insert(1, int(len(self.idat)).to_bytes(4, byteorder='big'))
-        newsplit.insert(2, b'\x49\x44\x41\x54')
         try:
             newIDAT = binascii.unhexlify(newIDAT)
         except:
             print("dana była w dobrym formacie")
+        newsplit.insert(1, int(len(self.idat)).to_bytes(4, byteorder='big'))
+        newsplit.insert(2, b'\x49\x44\x41\x54')
         newsplit.insert(3, newIDAT[:int(len(self.idat))])
         newsplit.insert(4, binascii.crc32(newsplit[2] + newsplit[3]).to_bytes(4, byteorder='big'))
 
@@ -230,10 +269,36 @@ class image(object):
 
 
 if __name__ == '__main__':
-    obraz =  image('zebra2.png')
+    obraz =  image('kostki.png')
     key = get_random_bytes(16)
-    newIDAT = cipher.encodeECB(key, obraz.idat)
-    obraz.saveImageWithIDAT('testzebra2', newIDAT)
+
+    scanlines = obraz.getScanlines()
+    toencode = b''
+    toleave = b''
+    scanstr = ''
+    for scanline in scanlines:
+        toencode += scanline[1:]
+        toleave += scanline[0:1]
+
+    encoded = cipher.encodeECB(key, toencode)
+    encoded_lst = [encoded[i:i+1] for i in range(0, len(encoded))]
+    for i in range(len(toleave)):
+        encoded_lst.insert(i*obraz.scanline_length, toleave[i:i+1])
+    newIDAT_lst = encoded_lst[:len(toencode)+len(toleave)]
+    newIDAT = b''.join(newIDAT_lst)
+    print(newIDAT)
+    print(len(newIDAT))
+
+    compressed = zlib.compress(newIDAT)
+
+    #out_file = open('scanlineskostki', "w")
+    #out_file.write(scanstr)
+    #out_file.close()
+
+    obraz.saveImageWithIDAT('testcompress', compressed)
+
+    #img = mpimg.imread('testzebra2.png')
+    #print(img)
 
     #zakodowany = image('test.png')
     #oldIDAT = cipher.decodeECB(key, zakodowany.idat)
