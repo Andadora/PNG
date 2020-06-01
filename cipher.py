@@ -31,6 +31,8 @@ class RSA:
         self.key_size = key_size
         self.public_key, self.private_key, self.N = self.key_generator(key_size)
         self.block_size = self.key_size // 4
+        self.leng = None
+        # leng of last preapred file
 
     def power(self, x, m, n):
         a = 1
@@ -63,11 +65,11 @@ class RSA:
             else:
                 codedHex.append(None)
             while len(codedHex[0]) < len(block):
-               codedHex[0] = '0' + codedHex[0]
+                codedHex[0] = '0' + codedHex[0]
             output.append(codedHex)
         return output
 
-    def decrypt(self, encrypted_data):
+    def decrypt(self, encrypted_data, length):
         msg = b''
         for d in encrypted_data:
             x = d[0]
@@ -77,8 +79,14 @@ class RSA:
             decodedInt = self.power(blockInt, self.private_key, self.N)
             # decodedHex = format(decodedInt, 'x')
             decodedHex = self.int_to_bytes(decodedInt)
-            while len(decodedHex) < self.key_size / 8:
-               decodedHex = b'\x00' + decodedHex
+            if d != encrypted_data[-1]:
+
+                while len(decodedHex) < self.key_size / 8:
+                    decodedHex = b'\x00' + decodedHex
+
+            else:
+                while length - len(msg + decodedHex) > 0:
+                    decodedHex = b'\x00' + decodedHex
             msg += decodedHex
         return msg
 
@@ -251,6 +259,6 @@ if __name__ == '__main__':
         enc_str += i[0]
 
     print(len(enc_str))
-    decrypted = rsa.decrypt(enc)
+    decrypted = rsa.decrypt(enc, len(decompressed))
     print(decompressed == decrypted)
     print(len(decompressed), len(decrypted))
