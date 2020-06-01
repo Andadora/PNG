@@ -30,7 +30,7 @@ class RSA:
     def __init__(self, key_size=64):
         self.key_size = key_size
         self.public_key, self.private_key, self.N = self.key_generator(key_size)
-        self.block_size = self.key_size // 4 - 1
+        self.block_size = self.key_size // 4
 
     def power(self, x, m, n):
         a = 1
@@ -47,9 +47,10 @@ class RSA:
     def encrpyt(self, data):
         input_size = len(data)
         bs = self.block_size
-        print(self.public_key.bit_length())
+        # print(self.public_key.bit_length())
         output = []
-        print(data[0:20])
+        # print(data[0:20])
+        # bytes = b''
         for i in range(0, len(data), bs):
             block = data[i:bs + i]
             blockInt = int(block, 16)
@@ -58,11 +59,11 @@ class RSA:
             codedHex.append(format(codedInt, 'x'))
             if len(codedHex) > len(block):
                 print(f'coded is longer {len(codedHex) - len(block)}')
-                codedHex = [codedHex[:len(block) + 1], codedHex[len(block) + 1:]]
+                codedHex = [codedHex[:len(block)], codedHex[len(block):]]
             else:
                 codedHex.append(None)
             while len(codedHex[0]) < len(block):
-                codedHex[0] = '0' + codedHex[0]
+               codedHex[0] = '0' + codedHex[0]
             output.append(codedHex)
         return output
 
@@ -77,7 +78,7 @@ class RSA:
             # decodedHex = format(decodedInt, 'x')
             decodedHex = self.int_to_bytes(decodedInt)
             while len(decodedHex) < self.key_size / 8:
-                decodedHex = b'\x00' + decodedHex
+               decodedHex = b'\x00' + decodedHex
             msg += decodedHex
         return msg
 
@@ -239,10 +240,17 @@ def bytes_per_pixel(color_type):
 
 if __name__ == '__main__':
     obraz = image.image('papuga_anon.png')
-    rsa = RSA()
+    rsa = RSA(64)
     decompressed = zlib.decompress(obraz.idat)
     data = image.ToHex_str(decompressed)
 
     enc = rsa.encrpyt(data)
+    print(len(data))
+    enc_str = ''
+    for i in enc:
+        enc_str += i[0]
+
+    print(len(enc_str))
     decrypted = rsa.decrypt(enc)
-    print(len(decompressed) == len(decompressed))
+    print(decompressed == decrypted)
+    print(len(decompressed), len(decrypted))

@@ -97,9 +97,9 @@ dec, ints_after_dec = decrypt(privaye_key, N, output, key_size)
 # n = list(filter(lambda x: x != 0, data_xx))
 # print(data_xx[:20])
 # print(dec[0:20])
-dec = dec[:len(dec)]
+# dec = dec[:len(dec)]
 print(ints_after_dec == ints_before_enc)
-print(len(dec), len(data_xx))
+#print(len(dec), len(data_xx))
 print(dec == data_xx)
 
 x = 25000
