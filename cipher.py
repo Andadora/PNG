@@ -1,82 +1,172 @@
-import sys
-from functools import reduce
+import binascii
+import zlib
 
 import Crypto.Util.number as number
 import random
+import secrets
+import cv2
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-
 import image
 
 
+def append_hex(a, b):
+    sizeof_b = 0
+    while ((b >> sizeof_b) > 0):
+        sizeof_b += 1
+    sizeof_b += sizeof_b % 4
+    return (a << sizeof_b) | b
+
+
+def xor_cbc_help(a, b):
+    xor = [chr(x ^ y) for (x, y) in zip(a, b)]
+    t = b''
+    for b in xor:
+        t += b.encode()
+    return t
+
+
 class RSA:
+    def __init__(self, key_size=64):
+        self.key_size = key_size
+        self.public_key, self.private_key, self.N = self.key_generator(key_size)
+        self.block_size = self.key_size // 4
 
-    def ecb_encrypt(self, e, N, input):
-        input_size = len(input)
-        block_size = 2 * len('{:x}'.format(e))
-        #print('{:x}'.format(e)[1])
-        #print(input)
-        #print(len('{:x}'.format(int(input, 16))), input_size)
+    def power(self, x, m, n):
+        a = 1
+        while m > 0:
+            if m % 2 == 1:
+                a = (a * x) % n
+            x = (x * x) % n
+            m //= 2
+        return a
+
+    def int_to_bytes(self, x: int) -> bytes:
+        return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+
+    def encrpyt(self, data):
+        input_size = len(data)
+        bs = self.block_size
+        # print(self.public_key.bit_length())
         output = []
-        upper_bound = input_size - input_size % block_size
-        for i in range(0, upper_bound, block_size):
-            output.append(self.encryption(e, N, input[i:block_size + i]))
-
-        if upper_bound < input_size:
-            output.append(self.encryption(e, N, input[upper_bound:]))
+        # print(data[0:20])
+        # bytes = b''
+        for i in range(0, len(data), bs):
+            block = data[i:bs + i]
+            blockInt = int(block, 16)
+            codedInt = int(self.power(blockInt, self.public_key, self.N))
+            codedHex = []
+            codedHex.append(format(codedInt, 'x'))
+            if len(codedHex) > len(block):
+                print(f'coded is longer {len(codedHex) - len(block)}')
+                codedHex = [codedHex[:len(block)], codedHex[len(block):]]
+            else:
+                codedHex.append(None)
+            while len(codedHex[0]) < len(block):
+               codedHex[0] = '0' + codedHex[0]
+            output.append(codedHex)
         return output
 
-    def encryption(self, e, N, msg: bytes):
-        # print(f'msg = {len(msg)}')
-        m = int(msg, 16)
+    def decrypt(self, encrypted_data):
+        msg = b''
+        for d in encrypted_data:
+            x = d[0]
+            if d[1] is not None:
+                x += d[1]
+            blockInt = int(x, 16)
+            decodedInt = self.power(blockInt, self.private_key, self.N)
+            # decodedHex = format(decodedInt, 'x')
+            decodedHex = self.int_to_bytes(decodedInt)
+            while len(decodedHex) < self.key_size / 8:
+               decodedHex = b'\x00' + decodedHex
+            msg += decodedHex
+        return msg
 
-        cipher_msg = pow(m, e, N)
-        zakodowana = '{:x}'.format(cipher_msg)
-        # print(f'hex = {len(zakodowana)}')
-        if len(msg) < len(zakodowana):
-            # print(zakodowana[:len(msg)], zakodowana[len(msg):])
-            return zakodowana[:len(msg)], zakodowana[len(msg):]
-        else:
-            return zakodowana, None
-
-    def toHex(self, s):
-        lst = []
-        for ch in s:
-            hv = hex(ord(ch)).replace('0x', '')
-            if len(hv) == 1:
-                hv = '0' + hv
-            lst.append(hv)
-
-        return reduce(lambda x, y: x + y, lst)
-
-    def decryption(self, d, N, cipher):
-        msg = ""
-
-        # parts = cipher.split()
-        # for part in parts:
-        #     if part:
-        c = cipher
-        msg = pow(c, d, N)
-        m = hex(msg)
-        m = '%x' % msg
-        print(f'm = {m}')
-        m = bytes.fromhex(m).decode('utf-8')
-
-        return m
+    # def cbc_encrypt(self, e, N, input):
+    #     self.cbc_block_size = len('{:x}'.format(e)) - 1
+    #     input_size = len(input)
+    #     upper_bound = input_size - input_size % self.cbc_block_size
+    #     self.cbc_vector = secrets.token_bytes(self.cbc_block_size)
+    #     vector = copy.deepcopy(self.cbc_vector)
+    #     output = []
+    #     for i in range(0, upper_bound, self.cbc_block_size):
+    #         xor = xor_cbc_help(input[i:self.cbc_block_size + i], vector)
+    #         out = self.encryption(e, N, xor)
+    #         output.append(out)
+    #         vector = out[0]
+    #
+    #     return output
+    #
+    # def cbc_decrypt(self, d, N, output: []):
+    #     result = b''
+    #     vector = copy.copy(self.cbc_vector)
+    #     for block in output:
+    #         if block[1] is not None:
+    #             x = block[0] + block[1]
+    #             print('scalony', x)
+    #         else:
+    #             x = block[0]
+    #         before_xor = self.decryption(d, N, x)
+    #         xor = xor_cbc_help(before_xor, vector)
+    #         result += xor
+    #         vector = block[0]
+    #
+    #     return result
+    #
+    # def ecb_encrypt(self, e, N, input):
+    #     input_size = len(input)
+    #     # self.block_size = len('{:x}'.format(e)) - 1
+    #     self.block_size = self.key_size // 4 - 1
+    #     output = []
+    #     upper_bound = input_size - input_size % self.block_size
+    #     for i in range(0, upper_bound, self.block_size):
+    #         out = self.encryption(e, N, input[i:self.block_size + i])
+    #         output.append(out)
+    #     if upper_bound < input_size:
+    #         output.append(self.encryption(e, N, input[upper_bound:]))
+    #     return output
+    #
+    # def encryption(self, e, N, msg: bytes):
+    #     m = int(binascii.hexlify(msg), 16)
+    #     cipher_msg = pow(m, e, N)
+    #     zakodowana = int_to_bytes(cipher_msg)
+    #     if len(msg) < len(zakodowana):
+    #         # print(len(msg), len(zakodowana[:len(msg)]))
+    #
+    #         return zakodowana[:len(msg)], zakodowana[len(msg):]
+    #     elif len(msg) > len(zakodowana):
+    #         pass
+    #     else:
+    #         return zakodowana, None
+    #
+    # def ecb_decrypt(self, d, N, data):
+    #     result = b''
+    #     for block in data:
+    #         x = b''
+    #         if block[1] is not None:
+    #             x = block[0] + block[1]
+    #         else:
+    #             x = block[0]
+    #         r = self.decryption(d, N, x)
+    #         result += r
+    #     return result
+    #
+    # def decryption(self, d, N, cipher):
+    #
+    #     c = int(binascii.hexlify(cipher), 16)
+    #     msg = pow(c, d, N)
+    #     m = int_to_bytes(msg)
+    #     return m
 
     def key_generator(self, key_size=512) -> (int, int, int):
         """"
             generate keys public, private and p*q
         """
-
+        self.key_size = key_size
         p = number.getPrime(key_size)
         q = number.getPrime(key_size)
-        # print(f'p = {p}')
-        # print(f'q = {q}')
         N = p * q
-        # print(f'N = {N}')
         phi_N = (p - 1) * (q - 1)
-
         e = None
         while True:
             e = random.randrange(2 ** (key_size - 1), 2 ** key_size)
@@ -101,7 +191,6 @@ class RSA:
         g, x, y = self.__gcd(a, b)
         if x < 0:
             x += b
-
         return x
 
     def __gcd(self, a, b):
@@ -138,13 +227,30 @@ def decodeCBC(key, iv, data):
     return ptCBC
 
 
+def bytes_per_pixel(color_type):
+    switcher = {
+        0: 1,
+        2: 3,
+        3: 1,
+        4: 2,
+        6: 4,
+    }
+    return switcher.get(color_type, "Not found")
+
+
 if __name__ == '__main__':
-    data = b'\x53\xad\x23\xb1\x28\x34\xb1\x28\x34'
-    # print(int(binascii.hexlify(data).decode('ascii'), 16))
-    # print((int(len(data))).to_bytes(4, byteorder='big'))
-    rsa = RSA()
-    public_key, privaye_key, N = rsa.key_generator(key_size=512)
-    obraz = image.image('papagaj.png')
-    # print(obraz.idat)
-    out = rsa.ecb_encrypt(public_key, N, obraz.idat)
-    print(out)
+    obraz = image.image('papuga_anon.png')
+    rsa = RSA(64)
+    decompressed = zlib.decompress(obraz.idat)
+    data = image.ToHex_str(decompressed)
+
+    enc = rsa.encrpyt(data)
+    print(len(data))
+    enc_str = ''
+    for i in enc:
+        enc_str += i[0]
+
+    print(len(enc_str))
+    decrypted = rsa.decrypt(enc)
+    print(decompressed == decrypted)
+    print(len(decompressed), len(decrypted))
