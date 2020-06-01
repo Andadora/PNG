@@ -145,8 +145,8 @@ class image(object):
                 ToDec_int(file.read(1))))
         file.read(4)
 
-   def IDAT(self, file, length):
-        self.idat += file.read(length)
+    def IDAT(self, file, length):
+        self.idat +=file.read(length)
         file.read(4)
 
     def cHRM(self, file):
@@ -202,23 +202,24 @@ class image(object):
         newsplit = []
         
         newsplit.append(split[0][:-4])
+        print(split[0][:-4])
         lenght = ToDec_int(split[0][-4:])
         for i in range(1, len(split)-1):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
-        newsplit.insert(1, int(len(self.idat)).to_bytes(4, byteorder='big'))
+        newsplit.insert(1, int(len(newIDAT)).to_bytes(4, byteorder='big'))
         newsplit.insert(2, b'\x49\x44\x41\x54')
         try:
             newIDAT = binascii.unhexlify(newIDAT)
         except:
             print("dana była w dobrym formacie")
-        newsplit.insert(3, newIDAT[:int(len(self.idat))])
+        newsplit.insert(3, newIDAT[:len(newIDAT)])
         newsplit.insert(4, binascii.crc32(newsplit[2] + newsplit[3]).to_bytes(4, byteorder='big'))
 
         for bstring in newsplit:
             print(bstring)
-            print('\n\n\n')
+            print('\n')
 
         x = b''.join(newsplit)
 

@@ -1,13 +1,13 @@
-import sys
-from functools import reduce
 import binascii
+import zlib
+
 import Crypto.Util.number as number
 import random
-
+import secrets
 import cv2
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
-import struct
+import copy
 import image
 
 
@@ -24,11 +24,50 @@ def append_hex(a, b):
     return (a << sizeof_b) | b
 
 
+def xor_cbc_help(a, b):
+    xor = [chr(x ^ y) for (x, y) in zip(a, b)]
+    t = b''
+    for b in xor:
+        t += b.encode()
+    return t
+
+
 class RSA:
+    def cbc_encrypt(self, e, N, input):
+        self.cbc_block_size = len('{:x}'.format(e)) - 1
+        input_size = len(input)
+        upper_bound = input_size - input_size % self.cbc_block_size
+        self.cbc_vector = secrets.token_bytes(self.cbc_block_size)
+        vector = copy.deepcopy(self.cbc_vector)
+        output = []
+        for i in range(0, upper_bound, self.cbc_block_size):
+            xor = xor_cbc_help(input[i:self.cbc_block_size + i], vector)
+            out = self.encryption(e, N, xor)
+            output.append(out)
+            vector = out[0]
+
+        return output
+
+    def cbc_decrypt(self, d, N, output: []):
+        result = b''
+        vector = copy.copy(self.cbc_vector)
+        for block in output:
+            if block[1] is not None:
+                x = block[0] + block[1]
+                print('scalony', x)
+            else:
+                x = block[0]
+            before_xor = self.decryption(d, N, x)
+            xor = xor_cbc_help(before_xor, vector)
+            result += xor
+            vector = block[0]
+
+        return result
 
     def ecb_encrypt(self, e, N, input):
         input_size = len(input)
-        self.block_size = len('{:x}'.format(e)) - 1
+        # self.block_size = len('{:x}'.format(e)) - 1
+        self.block_size = self.key_size // 4 - 1
         output = []
         upper_bound = input_size - input_size % self.block_size
         for i in range(0, upper_bound, self.block_size):
@@ -42,11 +81,16 @@ class RSA:
         m = int(binascii.hexlify(msg), 16)
         cipher_msg = pow(m, e, N)
         zakodowana = int_to_bytes(cipher_msg)
-        # return zakodowana
         if len(msg) < len(zakodowana):
+            # print(len(msg), len(zakodowana[:len(msg)]))
+
             return zakodowana[:len(msg)], zakodowana[len(msg):]
+        elif len(msg) > len(zakodowana):
+            pass
         else:
             return zakodowana, None
+
+    #def rsa_just_encrypt(self, e, N, value):
 
     # def toHex(self, s):
     #     lst = []
@@ -60,14 +104,17 @@ class RSA:
     def ecb_decrypt(self, d, N, data):
         result = b''
         for block in data:
+            x = b''
             if block[1] is not None:
                 x = block[0] + block[1]
             else:
                 x = block[0]
-            result += self.decryption(d, N, x)
+            r = self.decryption(d, N, x)
+            result += r
         return result
 
     def decryption(self, d, N, cipher):
+
         c = int(binascii.hexlify(cipher), 16)
         msg = pow(c, d, N)
         m = int_to_bytes(msg)
@@ -77,7 +124,7 @@ class RSA:
         """"
             generate keys public, private and p*q
         """
-
+        self.key_size = key_size
         p = number.getPrime(key_size)
         q = number.getPrime(key_size)
         N = p * q
@@ -142,6 +189,17 @@ def decodeCBC(key, iv, data):
     return ptCBC
 
 
+def bytes_per_pixel(color_type):
+    switcher = {
+        0: 1,
+        2: 3,
+        3: 1,
+        4: 2,
+        6: 4,
+    }
+    return switcher.get(color_type, "Not found")
+
+
 def int_to_bytes(x: int) -> bytes:
     return x.to_bytes((x.bit_length() + 7) // 8, 'big')
 
@@ -150,21 +208,22 @@ if __name__ == '__main__':
     data = b'\x53\xad\x23\xb1\x28\x34\xb1\x28\x34'
     x = int(binascii.hexlify(data), 16)
     print(x)
-    encrypted = cv2.imread('kostki_rsa.png')
-    cv2.imshow('rsa',encrypted)
+
+    obraz = image.image('kostki.png')
+    rsa = RSA()
+    public_key, privaye_key, N = rsa.key_generator(key_size=32)
+    decompressed = zlib.decompress(obraz.idat)
+    print('before', len(decompressed))
+    enc = rsa.ecb_encrypt(public_key, N, decompressed)
+    idat = b''
+    for i in enc:
+        idat += i[0]
+    idat = zlib.compress(idat, 9)
+    # print(idat)
+    print(f'len of idat {len(idat)}')
+    print(idat)
+    obraz.saveImageWithIDAT('nowy_rsa', idat)
+    encrypted = cv2.imread('papuga_rsa_u_gory.png')
+    cv2.imshow('rsa', encrypted)
     cv2.waitKey()
     cv2.destroyAllWindows()
-    # print(int(binascii.hexlify(data).decode('ascii'), 16))
-
-    # idat = ''
-    # print(out[-1][0])
-
-    # print(f'color = {obraz.colour_type}')
-    # for i in out:
-    #   idat += i[0]
-    #  idat += i[1]
-
-    # idat = binascii.unhexlify(idat)
-    # print(f'idat rsa = {idat}')
-    # print(f'wczytany = {len(obraz.idat)}')
-    # obraz.saveImageWithIDAT('kostki_rsa', idat)
