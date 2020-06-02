@@ -231,7 +231,37 @@ class image(object):
         compressedRest = zlib.compress(rest)
         return (compressedNewIDAT, compressedRest)
 
-    def saveImageWithIDAT(self, filename, newIDAT):
+    def getEncryptedIDATandRest(self, rsa):
+        scanlines = obraz.getScanlines()
+        pixData = b''
+        filterBytes = b''
+        scanstr = ''
+        for scanline in scanlines:
+            pixData += scanline[1:]
+            filterBytes += scanline[0:1] 
+        pixData = ToHex_str(pixData)
+        encrypted_block_rest_pairs = rsa.encrypt(pixData)
+  
+        encrypted_bytes = b''
+        rests = b''
+        proper_len = int(len(pixData)/len(encrypted_block_rest_pairs))
+        for pair in encrypted_block_rest_pairs:
+            encrypted_bytes += bytes.fromhex(pair[0][:proper_len])
+            length = len(pair[0][proper_len:]).to_bytes(1, 'big')
+            if length > b'0x00':
+                rests += length + bytes.fromhex(pair[0][16:])
+            else:
+                rests += length
+
+        encoded_lst = [encrypted_bytes[i:i+1] for i in range(0, len(encrypted_bytes))]
+        for i in range(len(filterBytes)):
+            encoded_lst.insert(i*obraz.scanline_length, filterBytes[i:i+1])
+        newIDAT_lst = encoded_lst[:len(pixData)+len(filterBytes)]
+        newIDAT = b''.join(newIDAT_lst)
+        compressedIDAT = zlib.compress(newIDAT)
+        return compressedIDAT, rests
+
+    def saveImageWithIDAT(self, filename, newIDAT, rests):
         
         file = open(self.path, "rb")
         temp = file.read()
@@ -246,18 +276,11 @@ class image(object):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
-        try:
-            newIDAT = binascii.unhexlify(newIDAT)
-        except:
-            print("dana była w dobrym formacie")
         newsplit.insert(1, int(len(self.idat)).to_bytes(4, byteorder='big'))
         newsplit.insert(2, b'\x49\x44\x41\x54')
         newsplit.insert(3, newIDAT[:int(len(self.idat))])
         newsplit.insert(4, binascii.crc32(newsplit[2] + newsplit[3]).to_bytes(4, byteorder='big'))
-
-        for bstring in newsplit:
-            print(bstring)
-            print('\n\n\n')
+        newsplit.append(rests)
 
         x = b''.join(newsplit)
 
@@ -270,36 +293,7 @@ class image(object):
 
 if __name__ == '__main__':
     obraz =  image('kostki.png')
-    key = get_random_bytes(16)
+    rsa = cipher.RSA(32)
 
-    scanlines = obraz.getScanlines()
-    toencode = b''
-    toleave = b''
-    scanstr = ''
-    for scanline in scanlines:
-        toencode += scanline[1:]
-        toleave += scanline[0:1]
-
-    encoded = cipher.encodeECB(key, toencode)
-    encoded_lst = [encoded[i:i+1] for i in range(0, len(encoded))]
-    for i in range(len(toleave)):
-        encoded_lst.insert(i*obraz.scanline_length, toleave[i:i+1])
-    newIDAT_lst = encoded_lst[:len(toencode)+len(toleave)]
-    newIDAT = b''.join(newIDAT_lst)
-    print(newIDAT)
-    print(len(newIDAT))
-
-    compressed = zlib.compress(newIDAT)
-
-    #out_file = open('scanlineskostki', "w")
-    #out_file.write(scanstr)
-    #out_file.close()
-
-    obraz.saveImageWithIDAT('testcompress', compressed)
-
-    #img = mpimg.imread('testzebra2.png')
-    #print(img)
-
-    #zakodowany = image('test.png')
-    #oldIDAT = cipher.decodeECB(key, zakodowany.idat)
-    #zakodowany.saveImageWithIDAT('odkodowany', oldIDAT)
+    idat, rests = obraz.getEncryptedIDATandRest(rsa)
+    obraz.saveImageWithIDAT('test', idat, rests)

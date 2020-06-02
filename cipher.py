@@ -46,7 +46,7 @@ class RSA:
     def int_to_bytes(self, x: int) -> bytes:
         return x.to_bytes((x.bit_length() + 7) // 8, 'big')
 
-    def encrpyt(self, data):
+    def encrypt(self, data):
         input_size = len(data)
         bs = self.block_size
         # print(self.public_key.bit_length())
@@ -247,12 +247,13 @@ def bytes_per_pixel(color_type):
 
 
 if __name__ == '__main__':
-    obraz = image.image('papuga_anon.png')
+    obraz = image.image('kostki.png')
     rsa = RSA(64)
-    decompressed = zlib.decompress(obraz.idat)
+    idat = binascii.unhexlify(obraz.idat)
+    decompressed = zlib.decompress(idat)
     data = image.ToHex_str(decompressed)
 
-    enc = rsa.encrpyt(data)
+    enc = rsa.encrypt(data)
     print(len(data))
     enc_str = ''
     for i in enc:
