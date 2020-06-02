@@ -19,15 +19,48 @@ def bytes_per_pixel(color_type):
     switcher = {
         0: 1,
         2: 3,
-        3: 1,
+        3: 4,
         4: 2,
         6: 4,
     }
     return switcher.get(color_type, "Not found")
 
 
-def int_to_bytes(x: int) -> bytes:
-    return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+def int_to_bytes(x: int, pixel) -> bytes:
+    return x.to_bytes(pixel, 'big')
+
+
+def bytes_to_int(b) -> int:
+    return int.from_bytes(b, 'big')
+
+
+def encrypt_2(public_key, N, data, pixel, key_size):
+    output = []
+
+    for i in range(0, len(data), pixel):
+        x = bytes_to_int(data[i:i + pixel])
+        encrypted_int = power(x, public_key, N)
+        try:
+            encrypted_bytes = int_to_bytes(encrypted_int, len(data[i:i + pixel]))
+        except:
+            encrypted_bytes = int_to_bytes(encrypted_int, key_size//4)
+        value = b''
+        rest = b''
+        value += encrypted_bytes[:pixel]
+        rest += encrypted_bytes[pixel:]
+        output.append([value, rest])
+    return output
+
+
+def decrypt_2(private_key, N, encrypted_data, key_size, pixel):
+    msg = b''
+    for d in encrypted_data:
+        encoded_bytes = d[0] + d[1]
+        encoded_int = bytes_to_int(encoded_bytes)
+        decoded_int = power(encoded_int, private_key, N)
+        decoded_byte = int_to_bytes(decoded_int, len(d[0]))
+        msg += decoded_byte
+    return msg
 
 
 def decrypt(private_key, N, encrypted_data, key_size, pixel):
@@ -49,7 +82,7 @@ def decrypt(private_key, N, encrypted_data, key_size, pixel):
             while len(decodedHex) < pixel // 2:
                 decodedHex = b'\0' + decodedHex
         else:
-            while len(decodedHex) < pixel // 2:
+            while len(decodedHex) < rest:
                 decodedHex = b'\0' + decodedHex
 
             # print(int_to_bytes(blockInt))
@@ -91,7 +124,7 @@ def encrpyt(public_key, N, data, pixel):
         output.append(value_rest)
 
     # print(f'enc = {ints[5000:5200]}')
-    return output, ints
+    return output
 
 
 cls = image.image('papuga_anon.png')
@@ -100,27 +133,18 @@ print(f'color:= {pixel}')
 
 idat = binascii.unhexlify(cls.idat)
 data_xx = zlib.decompress(idat)
-data = image.ToHex_str(data_xx)
 
 rsa = RSA()
-key_size = 4
+key_size = 32
 public_key, privaye_key, N = rsa.key_generator(key_size)
-output, ints_before_enc = encrpyt(public_key, N, data, pixel)
-# print(output[:20])
-sum = ''
-for o in output:
-    sum += o[0]
-sum = binascii.unhexlify(sum)
-sum = zlib.compress(sum, 1)
-# cls.saveImageWithIDAT('rsa.png', sum)
-dec, ints_after_dec = decrypt(privaye_key, N, output, key_size, pixel)
-print('dlugosci danych ', len(sum), len(idat))
-
-print(output[:20])
-print(ints_after_dec == ints_before_enc)
-print(len(dec), len(data_xx))
-print(dec[:len(data_xx)] == data_xx)
-
-x = 25000
-# print(dec[:-5])
-# print(data_xx[:-5])
+output = encrypt_2(public_key, N, data_xx, cls.colour_type, key_size)
+x = 5000
+sum = b''
+for i in output:
+    sum += i[0]
+decrypted = decrypt_2(privaye_key, N, output, key_size, pixel)
+print(len(sum))
+print(len(data_xx))
+print(len(decrypted))
+print(output[x:x + 200])
+#

@@ -3,10 +3,6 @@ import zlib
 
 import Crypto.Util.number as number
 import random
-import secrets
-import cv2
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
 import image
 
 
@@ -140,7 +136,7 @@ class RSA:
             try:
                 encrypted_bytes = self.int_to_bytes(encrypted_int, len(data[i:i + pixel]))
             except:
-                encrypted_bytes = self.int_to_bytes(encrypted_int, len(data[i:i + pixel]) * 2)
+                encrypted_bytes = self.int_to_bytes(encrypted_int, self.key_size//4)
             value = b''
             rest = b''
             value += encrypted_bytes[:pixel]
@@ -287,28 +283,6 @@ class RSA:
             return g, y - b_div_a * x, x
 
 
-def encodeECB(key, data):
-    ctECB_bytes = AES.new(key, AES.MODE_ECB).encrypt(pad(data, AES.block_size))
-    return ctECB_bytes
-
-
-def decodeECB(key, data):
-    ptECB = unpad(AES.new(key, AES.MODE_ECB).decrypt(data), AES.block_size)
-    return ptECB
-
-
-def encodeCBC(key, data):
-    cipher = AES.new(key, AES.MODE_CBC)
-    iv = cipher.iv
-    ctCBC_bytes = cipher.encrypt(pad(data, AES.block_size))
-    return ctCBC_bytes, iv
-
-
-def decodeCBC(key, iv, data):
-    ptCBC = unpad(AES.new(key, AES.MODE_CBC, iv).decrypt(data), AES.block_size)
-    return ptCBC
-
-
 def bytes_per_pixel(color_type):
     switcher = {
         0: 1,
@@ -322,7 +296,7 @@ def bytes_per_pixel(color_type):
 
 if __name__ == '__main__':
     obraz = image.image('papuga_anon.png')
-    rsa = RSA(32)
+    rsa = RSA(64)
     idat = binascii.unhexlify(obraz.idat)
     print(idat)
     decompressed = zlib.decompress(idat)

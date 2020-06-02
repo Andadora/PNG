@@ -147,7 +147,7 @@ class image(object):
         self.filtering = ToDec_int(file.read(1))
         self.interlace = ToDec_int(file.read(1))
         self.bytes_per_pix = bytes_per_pix_dict[self.colour_type]
-        self.scanline_length = self.width*self.bytes_per_pix+1
+        self.scanline_length = self.width * self.bytes_per_pix + 1
         check_sum = file.read(4)
 
     def PLTE(self, file, length):
@@ -210,7 +210,8 @@ class image(object):
 
     def getScanlines(self):
         decompressed = self.getDecompressedIDAT()
-        scanlines = [decompressed[i*self.scanline_length:(i+1)*self.scanline_length] for i in range(0, self.height)]
+        scanlines = [decompressed[i * self.scanline_length:(i + 1) * self.scanline_length] for i in
+                     range(0, self.height)]
         return scanlines
 
     def encodeIDAT_with_decompression(self):
@@ -222,11 +223,11 @@ class image(object):
             toleave += scanline[0:1]
 
         encoded = cipher.encodeECB(key, toencode)
-        encoded_lst = [encoded[i:i+1] for i in range(0, len(encoded))]
+        encoded_lst = [encoded[i:i + 1] for i in range(0, len(encoded))]
         for i in range(len(toleave)):
-            encoded_lst.insert(i*obraz.scanline_length, toleave[i:i+1])
-        newIDAT = b''.join(encoded_lst[:len(toencode)+len(toleave)])
-        rest = b''.join(encoded_lst[len(toencode)+len(toleave):])
+            encoded_lst.insert(i * obraz.scanline_length, toleave[i:i + 1])
+        newIDAT = b''.join(encoded_lst[:len(toencode) + len(toleave)])
+        rest = b''.join(encoded_lst[len(toencode) + len(toleave):])
         compressedNewIDAT = zlib.compress(newIDAT)
         compressedRest = zlib.compress(rest)
         return (compressedNewIDAT, compressedRest)
@@ -238,41 +239,37 @@ class image(object):
         scanstr = ''
         for scanline in scanlines:
             pixData += scanline[1:]
-            filterBytes += scanline[0:1] 
-        pixData = ToHex_str(pixData)
-        encrypted_block_rest_pairs = rsa.encrypt(pixData)
-  
+            filterBytes += scanline[0:1]
+        # pixData = ToHex_str(pixData)
+        print(self.colour_type)
+        encrypted_block_rest_pairs = rsa.ecb_encrypt(pixData, self.colour_type)
+
         encrypted_bytes = b''
         rests = b''
-        proper_len = int(len(pixData)/len(encrypted_block_rest_pairs))
         for pair in encrypted_block_rest_pairs:
-            encrypted_bytes += bytes.fromhex(pair[0][:proper_len])
-            length = len(pair[0][proper_len:]).to_bytes(1, 'big')
-            if length > b'0x00':
-                rests += length + bytes.fromhex(pair[0][16:])
-            else:
-                rests += length
+           encrypted_bytes += pair[0]
+           rests += pair[1]
 
-        encoded_lst = [encrypted_bytes[i:i+1] for i in range(0, len(encrypted_bytes))]
+        encoded_lst = [encrypted_bytes[i:i + 1] for i in range(0, len(encrypted_bytes))]
         for i in range(len(filterBytes)):
-            encoded_lst.insert(i*obraz.scanline_length, filterBytes[i:i+1])
-        newIDAT_lst = encoded_lst[:len(pixData)+len(filterBytes)]
+            encoded_lst.insert(i * obraz.scanline_length, filterBytes[i:i + 1])
+        newIDAT_lst = encoded_lst[:len(pixData) + len(filterBytes)]
         newIDAT = b''.join(newIDAT_lst)
         compressedIDAT = zlib.compress(newIDAT)
         return compressedIDAT, rests
 
     def saveImageWithIDAT(self, filename, newIDAT, rests):
-        
+
         file = open(self.path, "rb")
         temp = file.read()
         file.close()
 
         split = temp.split(b'IDAT')
         newsplit = []
-        
+
         newsplit.append(split[0][:-4])
         lenght = ToDec_int(split[0][-4:])
-        for i in range(1, len(split)-1):
+        for i in range(1, len(split) - 1):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
@@ -290,10 +287,9 @@ class image(object):
         print("zapisano plik: " + str(filename) + '.png')
 
 
-
 if __name__ == '__main__':
-    obraz =  image('kostki.png')
-    rsa = cipher.RSA(32)
+    obraz = image('papuga_anon.png')
+    rsa = cipher.RSA(64)
 
     idat, rests = obraz.getEncryptedIDATandRest(rsa)
     obraz.saveImageWithIDAT('test', idat, rests)
