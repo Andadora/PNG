@@ -43,8 +43,11 @@ class RSA:
             m //= 2
         return a
 
-    def int_to_bytes(self, x: int) -> bytes:
-        return x.to_bytes((x.bit_length() + 7) // 8, 'big')
+    def int_to_bytes(self, x: int, pixel) -> bytes:
+        return x.to_bytes(pixel, 'big')
+
+    def bytes_to_int(self, b) -> int:
+        return int.from_bytes(b, 'big')
 
     def encrypt(self, data):
         input_size = len(data)
@@ -88,6 +91,77 @@ class RSA:
                 while length - len(msg + decodedHex) > 0:
                     decodedHex = b'\x00' + decodedHex
             msg += decodedHex
+        return msg
+
+    def test_encrypt(self, data, color_type):
+        block_size = bytes_per_pixel(color_type)
+        print(self.public_key.bit_length())
+        output = []
+
+        ints = []
+        block = None
+        for i in range(0, len(data), block_size):
+            block = data[i:block_size + i]
+            blockInt = int(block, 16)
+            codedInt = int(self.power(blockInt, self.public_key, self.N))
+            codedHex = format(codedInt, 'x')
+            value_rest = []
+            while len(codedHex) < len(block):
+                codedHex = '0' + codedHex
+            if len(codedHex) > len(block):
+                value_rest = [codedHex[:len(block)], codedHex[len(block):]]
+            else:
+                value_rest.append(codedHex)
+                value_rest.append('')
+
+            output.append(value_rest)
+
+        # print(f'enc = {ints[5000:5200]}')
+        return output
+
+    def ecb_encrypt(self, data, color: int):
+        """
+        RSA with ecb mode
+
+        :param data: data to encrypt as bytes
+        :param color: image.image(".. .png").colour_type
+        :return: encrypted data as [[value,rest],[..,..]...]]
+            value and rest are bytes
+        len(data) == Sum of len(values)
+        """
+
+        output = []
+        pixel = bytes_per_pixel(color)
+        print(color)
+        for i in range(0, len(data), pixel):
+            x = self.bytes_to_int(data[i:i + pixel])
+            # print(data[i:i + pixel])
+            encrypted_int = self.power(x, self.public_key, self.N)
+            try:
+                encrypted_bytes = self.int_to_bytes(encrypted_int, len(data[i:i + pixel]))
+            except:
+                encrypted_bytes = self.int_to_bytes(encrypted_int, len(data[i:i + pixel]) * 2)
+            value = b''
+            rest = b''
+            value += encrypted_bytes[:pixel]
+            rest += encrypted_bytes[pixel:]
+            # print(i, len(data))
+            output.append([value, rest])
+        return output
+
+    def ecb_decrypt(self, encrypted_data, color):
+        """"
+            RSA with ecb mode
+
+            return decrypted data as bytes
+        """
+        msg = b''
+        for d in encrypted_data:
+            encoded_bytes = d[0] + d[1]
+            encoded_int = self.bytes_to_int(encoded_bytes)
+            decoded_int = self.power(encoded_int, self.private_key, self.N)
+            decoded_byte = self.int_to_bytes(decoded_int, len(d[0]))
+            msg += decoded_byte
         return msg
 
     # def cbc_encrypt(self, e, N, input):
@@ -239,17 +313,18 @@ def bytes_per_pixel(color_type):
     switcher = {
         0: 1,
         2: 3,
-        3: 1,
+        3: 4,
         4: 2,
         6: 4,
     }
-    return switcher.get(color_type, "Not found")
+    return switcher.get(color_type, 1)
 
 
 if __name__ == '__main__':
-    obraz = image.image('kostki.png')
-    rsa = RSA(64)
+    obraz = image.image('papuga_anon.png')
+    rsa = RSA(32)
     idat = binascii.unhexlify(obraz.idat)
+    print(idat)
     decompressed = zlib.decompress(idat)
     data = image.ToHex_str(decompressed)
 
