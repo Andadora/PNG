@@ -223,7 +223,6 @@ class image(object):
             pixData += scanline[1:]
             filterBytes += scanline[0:1]
         encrypted_block_rest_pairs = rsa.ecb_encrypt(pixData, self.colour_type)
-        encrypted_block_rest_pairs = rsa.ecb_encrypt(pixData, self.colour_type)
         encrypted_bytes = b''
         rests = b''
         for pair in encrypted_block_rest_pairs:
@@ -286,9 +285,6 @@ class image(object):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
-        print(newIDAT)
-        print(len(newIDAT))
-        print(len(newIDAT).to_bytes(4, byteorder='big'))
 
         newsplit.insert(1, len(newIDAT).to_bytes(4, byteorder='big'))
         newsplit.insert(2, b'\x49\x44\x41\x54')
@@ -307,7 +303,7 @@ class image(object):
 
 if __name__ == '__main__':
     obraz = image('tux.png')
-    rsa = cipher.RSA(64)
+    rsa = cipher.RSA(32)
     idat, rests = obraz.getEncryptedIDATandRest(rsa)
     obraz.saveImageWithIDAT('test', idat, rests)
 

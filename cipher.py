@@ -83,7 +83,6 @@ class RSA:
 
         output = []
         pixel = bytes_per_pixel(color)
-        print(color)
         for i in range(0, len(data), pixel):
             x = self.bytes_to_int(data[i:i + pixel])
             encrypted_int = self.power(x, self.public_key, self.N)
@@ -164,7 +163,7 @@ def bytes_per_pixel(color_type):
     switcher = {
         0: 1,
         2: 3,
-        3: 4,
+        3: 1,
         4: 2,
         6: 4,
     }
