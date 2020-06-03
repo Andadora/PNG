@@ -13,12 +13,14 @@ def menu():
     filepath = filedialog.asksaveasfilename(initialdir="D:\Programming\python\PNG", title="Select file",
                                             filetypes=(("png files", "*.png"), ("all files", "*.*")))
     root.destroy()
+    rsa = cipher.RSA(64)
     while True:
         choice = input("""
                           A: Wczytaj plik
                           B: Anonimizuj
                           C: FFT
-                          D: Encrypt ECB
+                          D: RSA ECB
+                          F: RSA CBC
                           Q: Quit/Log Out
     
                           Please enter your choice: """)
@@ -40,14 +42,37 @@ def menu():
             f = fourier.Fourier()
             img, shift, spec = f.show_img_fft(filepath)
             f.show_img_inverse_fft(img, shift, spec)
-        #elif choice == "D" or choice == "d":
-        #    encrypted_name = input("""
-        #                Podaj nazwe pliku po zakodowaniu bez rozszerzenia
-        #    """)
-        #    key = get_random_bytes(16)
-        #    print(f'klucz: {key}')
-        #    obraz =  image.image(filepath)
-        #    encryptedIDAT = cipher.encodeECB(key, obraz.IDAT)
+        elif choice == "D" or choice == "d":
+            obraz = image.image(filepath)
+            encrypted_name = input("""
+                                                Podaj nazwe pliku po zakodowaniu bez rozszerzenia
+                                    """)
+
+            decrypted_name = input("""
+                                                Podaj nazwe pliku po odkodowaniu bez rozszerzenia
+                                    """)
+
+            idat, rests = obraz.getECBEncryptedIDATandRest(rsa)
+            obraz.saveImageWithIDAT(encrypted_name, idat, rests)
+            encrypted = image.image(str(encrypted_name) + '.png')
+            decryptedIdat = encrypted.getECBDecryptedIDAT(rsa)
+            encrypted.saveImageWithIDAT(decrypted_name, decryptedIdat, None)
+
+        elif choice == 'F' or choice == 'f':
+            obraz = image.image(filepath)
+            encrypted_name = input("""
+                                    Podaj nazwe pliku po zakodowaniu bez rozszerzenia
+                        """)
+
+            decrypted_name = input("""
+                                    Podaj nazwe pliku po odkodowaniu bez rozszerzenia
+                        """)
+            idat, rests, vector = obraz.getCBCEncryptedIDATandRest(rsa)
+            obraz.saveImageWithIDAT(encrypted_name, idat, rests)
+            encrypted = image.image(str(encrypted_name) + '.png')
+            decryptedIdat = encrypted.getCBCDecryptedIDAT(rsa, vector)
+            encrypted.saveImageWithIDAT(decrypted_name, decryptedIdat, None)
+
         elif choice == "Q" or choice == "q":
             sys.exit()
         else:
