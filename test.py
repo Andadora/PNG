@@ -43,7 +43,7 @@ def encrypt_2(public_key, N, data, pixel, key_size):
         try:
             encrypted_bytes = int_to_bytes(encrypted_int, len(data[i:i + pixel]))
         except:
-            encrypted_bytes = int_to_bytes(encrypted_int, key_size//4)
+            encrypted_bytes = int_to_bytes(encrypted_int, key_size // 4)
         value = b''
         rest = b''
         value += encrypted_bytes[:pixel]
@@ -146,5 +146,7 @@ decrypted = decrypt_2(privaye_key, N, output, key_size, pixel)
 print(len(sum))
 print(len(data_xx))
 print(len(decrypted))
+print(decrypted == data_xx)
 print(output[x:x + 200])
-#
+
+
