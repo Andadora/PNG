@@ -215,7 +215,7 @@ class image(object):
                      range(0, self.height)]
         return scanlines
 
-    def getEncryptedIDATandRest(self, rsa):
+    def getECBEncryptedIDATandRest(self, rsa):
         scanlines = self.getScanlines()
         pixData = b''
         filterBytes = b''
@@ -237,7 +237,7 @@ class image(object):
         compressedIDAT = zlib.compress(newIDAT)
         return compressedIDAT, rests
 
-    def getDecryptedIDAT(self, rsa):
+    def getECBDecryptedIDAT(self, rsa):
         scanlines = self.getScanlines()
         pixData = b''
         filterBytes = b''
@@ -263,6 +263,63 @@ class image(object):
             encrypted_pairs.append([pixData_blocks[i], rests_lst[i]])
 
         decrypted_bytes = rsa.ecb_decrypt(encrypted_pairs, self.colour_type)
+
+        decrypted_lst = [decrypted_bytes[i:i + 1] for i in range(0, len(decrypted_bytes))]
+        for i in range(len(filterBytes)):
+            decrypted_lst.insert(i * self.scanline_length, filterBytes[i:i + 1])
+        newIDAT_lst = decrypted_lst[:len(pixData) + len(filterBytes)]
+        newIDAT = b''.join(newIDAT_lst)
+        compressedIDAT = zlib.compress(newIDAT)
+        return compressedIDAT
+
+    def getCBCEncryptedIDATandRest(self, rsa):
+        scanlines = self.getScanlines()
+        pixData = b''
+        filterBytes = b''
+        for scanline in scanlines:
+            pixData += scanline[1:]
+            filterBytes += scanline[0:1]
+        encrypted_block_rest_pairs, vector = rsa.cbc_encrypt(pixData, self.colour_type)
+        encrypted_bytes = b''
+        rests = b''
+        for pair in encrypted_block_rest_pairs:
+           encrypted_bytes += pair[0]
+           rests += len(pair[1]).to_bytes(4, 'big') + pair[1]
+
+        encrypted_lst = [encrypted_bytes[i:i + 1] for i in range(0, len(encrypted_bytes))]
+        for i in range(len(filterBytes)):
+            encrypted_lst.insert(i * self.scanline_length, filterBytes[i:i + 1])
+        newIDAT_lst = encrypted_lst[:len(pixData) + len(filterBytes)]
+        newIDAT = b''.join(newIDAT_lst)
+        compressedIDAT = zlib.compress(newIDAT)
+        return compressedIDAT, rests, vector
+
+    def getCBCDecryptedIDAT(self, rsa, vector):
+        scanlines = self.getScanlines()
+        pixData = b''
+        filterBytes = b''
+        for scanline in scanlines:
+            pixData += scanline[1:]
+            filterBytes += scanline[0:1]
+        pixData_blocks = [pixData[i:i + self.bytes_per_pix] for i in range(0, len(pixData), self.bytes_per_pix)]
+
+        file = open(self.path, "rb")
+        temp = file.read()
+        file.close()
+        rests = temp.split(b'IEND')[1][4:]
+        rests_lst = []
+        length = ToDec_int(rests[0:4])
+        i = 0
+        while length != 1413828164: # int(b'TEND')
+            rests_lst.append(rests[i+4:i+4+length])
+            i = i + 4 + length
+            length = ToDec_int(rests[i:i+4])
+
+        encrypted_pairs = []
+        for i in range(len(pixData_blocks)):
+            encrypted_pairs.append([pixData_blocks[i], rests_lst[i]])
+
+        decrypted_bytes = rsa.cbc_decrypt(encrypted_pairs, self.colour_type, vector)
 
         decrypted_lst = [decrypted_bytes[i:i + 1] for i in range(0, len(decrypted_bytes))]
         for i in range(len(filterBytes)):
@@ -302,20 +359,12 @@ class image(object):
         print("zapisano plik: " + str(filename) + '.png')
 
 if __name__ == '__main__':
-    obraz = image('tux.png')
+    obraz = image('kostki.png')
     rsa = cipher.RSA(32)
-    idat, rests = obraz.getEncryptedIDATandRest(rsa)
+    idat, rests, vector = obraz.getCBCEncryptedIDATandRest(rsa)
     obraz.saveImageWithIDAT('test', idat, rests)
 
     encrypted = image('test.png')
-    decryptedIdat = encrypted.getDecryptedIDAT(rsa)
+    decryptedIdat = encrypted.getCBCDecryptedIDAT(rsa, vector)
     encrypted.saveImageWithIDAT('odkodowanytest', decryptedIdat, None)
 
-    #a = b'x\x9cc\xe8`\x10EF\x0c\x14\xf2\x01p\xf1\x0fV'
-    #b = b'\x18Wc\xe8`\x10EF\x94\xf1\x19D\x01p\xf1\x0fV'
-    #dec2 = zlib.decompress(b)
-    #print(a)
-    #print(b)
-    #print(dec2)
-    #for i in range(1,10):
-    #    print(zlib.compress(dec2, i))
