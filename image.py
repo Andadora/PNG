@@ -240,14 +240,13 @@ class image(object):
         for scanline in scanlines:
             pixData += scanline[1:]
             filterBytes += scanline[0:1]
-        # pixData = ToHex_str(pixData)
-        print(self.colour_type)
-        encrypted_block_rest_pairs = rsa.ecb_encrypt(pixData, self.colour_type)
 
+        encrypted_block_rest_pairs = rsa.ecb_encrypt(pixData, self.colour_type)
         encrypted_bytes = b''
         rests = b''
         for pair in encrypted_block_rest_pairs:
            encrypted_bytes += pair[0]
+
            rests += pair[1]
 
         encoded_lst = [encrypted_bytes[i:i + 1] for i in range(0, len(encrypted_bytes))]
@@ -263,10 +262,8 @@ class image(object):
         file = open(self.path, "rb")
         temp = file.read()
         file.close()
-
         split = temp.split(b'IDAT')
         newsplit = []
-
         newsplit.append(split[0][:-4])
         lenght = ToDec_int(split[0][-4:])
         for i in range(1, len(split) - 1):
@@ -290,6 +287,5 @@ class image(object):
 if __name__ == '__main__':
     obraz = image('papuga_anon.png')
     rsa = cipher.RSA(64)
-
     idat, rests = obraz.getEncryptedIDATandRest(rsa)
     obraz.saveImageWithIDAT('test', idat, rests)
