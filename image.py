@@ -229,7 +229,6 @@ class image(object):
         for pair in encrypted_block_rest_pairs:
            encrypted_bytes += pair[0]
            rests += len(pair[1]).to_bytes(4, 'big') + pair[1]
-           rests += pair[1]
 
         encrypted_lst = [encrypted_bytes[i:i + 1] for i in range(0, len(encrypted_bytes))]
         for i in range(len(filterBytes)):
@@ -254,11 +253,11 @@ class image(object):
         rests = temp.split(b'IEND')[1][4:]
         rests_lst = []
         length = ToDec_int(rests[0:4])
-        i = 4
+        i = 0
         while length != 1413828164: # int(b'TEND')
-            rests_lst.append(rests[i:i+length])
-            length = ToDec_int(rests[i+length:i+length+4])
-            i+=length+4
+            rests_lst.append(rests[i+4:i+4+length])
+            i = i + 4 + length
+            length = ToDec_int(rests[i:i+4])
 
         encrypted_pairs = []
         for i in range(len(pixData_blocks)):
@@ -287,6 +286,7 @@ class image(object):
             newsplit.append(split[i][lenght + 4:-4])
             lenght = ToDec_int(split[i][-4:])
         newsplit.append(split[-1][lenght + 4:])
+        print(newIDAT)
         print(len(newIDAT))
         print(len(newIDAT).to_bytes(4, byteorder='big'))
 
@@ -306,7 +306,7 @@ class image(object):
         print("zapisano plik: " + str(filename) + '.png')
 
 if __name__ == '__main__':
-    obraz = image('zebra.png')
+    obraz = image('tux.png')
     rsa = cipher.RSA(64)
     idat, rests = obraz.getEncryptedIDATandRest(rsa)
     obraz.saveImageWithIDAT('test', idat, rests)
