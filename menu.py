@@ -9,10 +9,6 @@ import cipher
 
 def menu():
     print("************MAIN MENU**************")
-    root = Tk()
-    filepath = filedialog.asksaveasfilename(initialdir="D:\Programming\python\PNG", title="Select file",
-                                            filetypes=(("png files", "*.png"), ("all files", "*.*")))
-    root.destroy()
     rsa = cipher.RSA(64)
     while True:
         choice = input("""
@@ -20,12 +16,16 @@ def menu():
                           B: Anonimizuj
                           C: FFT
                           D: RSA ECB
-                          F: RSA CBC
+                          E: RSA CBC
                           Q: Quit/Log Out
     
                           Please enter your choice: """)
 
         if choice == "A" or choice == "a":
+            root = Tk()
+            filepath = filedialog.asksaveasfilename(initialdir="D:\Programming\python\PNG", title="Select file",
+                                            filetypes=(("png files", "*.png"), ("all files", "*.*")))
+            root.destroy()
             obraz = image.image(filepath)
             print(obraz)
             print(obraz.get_ancillary_data())
@@ -58,7 +58,7 @@ def menu():
             decryptedIdat = encrypted.getECBDecryptedIDAT(rsa)
             encrypted.saveImageWithIDAT(decrypted_name, decryptedIdat, None)
 
-        elif choice == 'F' or choice == 'f':
+        elif choice == 'E' or choice == 'e':
             obraz = image.image(filepath)
             encrypted_name = input("""
                                     Podaj nazwe pliku po zakodowaniu bez rozszerzenia
@@ -76,7 +76,7 @@ def menu():
         elif choice == "Q" or choice == "q":
             sys.exit()
         else:
-            print("You must only select either A,B,C")
+            print("You must only select either A,B,C,D,E,Q")
             print("Please try again")
             menu()
 
